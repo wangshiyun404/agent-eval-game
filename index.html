@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>智能体评测闯关 · Terminal-Bench 与 Harbor</title>
+<style>
+:root{
+  --bg:#fff8ec; --ink:#2b2340; --muted:#6b6385; --card:#ffffff;
+  --pri:#6c5ce7; --pri2:#a29bfe; --ok:#1fb67a; --okbg:#e3f8ee; --bad:#e8505b; --badbg:#fde8ea;
+  --sun:#ffc93c; --sky:#55c3f0; --pink:#ff7eb6; --mint:#5fd6b4; --orange:#ff9f43;
+  --r:20px; --shadow:0 6px 0 rgba(43,35,64,.12), 0 10px 24px rgba(43,35,64,.10);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;overflow-x:hidden}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC",sans-serif;
+  font-size:clamp(18px,2.1vw,22px); line-height:1.6; color:var(--ink);
+  background:var(--bg);
+  background-image:radial-gradient(circle at 10% 10%,#ffe7b3 0 80px,transparent 81px),radial-gradient(circle at 92% 18%,#d9f3ff 0 110px,transparent 111px),radial-gradient(circle at 85% 92%,#ffe0ef 0 90px,transparent 91px);
+  background-attachment:fixed; min-height:100vh;
+}
+code,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+button{font:inherit;color:inherit;cursor:pointer;border:none;touch-action:manipulation}
+.wrap{max-width:1000px;margin:0 auto;padding:12px 16px 60px}
+/* top bar */
+.top{position:sticky;top:0;z-index:20;background:rgba(255,248,236,.94);backdrop-filter:blur(6px);border-bottom:2px solid #f1e4cc}
+.top .in{max-width:1000px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.brand{font-weight:800;font-size:1.05em;display:flex;align-items:center;gap:8px;white-space:nowrap}
+.bar{flex:1;min-width:140px;height:16px;background:#efe3cf;border-radius:99px;overflow:hidden}
+.bar>i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--mint),var(--sky),var(--pri));border-radius:99px;transition:width .5s}
+.pill{background:#fff;border-radius:99px;padding:4px 14px;font-weight:700;box-shadow:0 2px 0 rgba(0,0,0,.08);white-space:nowrap}
+.tbtn{background:#fff;border-radius:14px;padding:8px 14px;font-weight:700;box-shadow:0 3px 0 rgba(0,0,0,.1);white-space:nowrap;min-height:46px}
+.tbtn:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.1)}
+/* cards */
+.card{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:22px;margin:16px 0}
+h1{font-size:2.1em;line-height:1.25;margin:.2em 0}
+h2{font-size:1.5em;line-height:1.3;margin:.2em 0 .4em}
+h3{font-size:1.2em;margin:.3em 0}
+.muted{color:var(--muted)}
+.big{font-size:1.15em}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--pri);color:#fff;font-weight:800;font-size:1.1em;padding:14px 30px;border-radius:18px;box-shadow:0 6px 0 #4b3fc0;min-height:60px;transition:transform .08s}
+.btn:active{transform:translateY(4px);box-shadow:0 2px 0 #4b3fc0}
+.btn.sec{background:#fff;color:var(--pri);box-shadow:0 6px 0 #d8d3f7;border:2px solid #d8d3f7}
+.btn.go{background:var(--ok);box-shadow:0 6px 0 #138a5b}
+.btn.sun{background:var(--sun);color:#3b2a00;box-shadow:0 6px 0 #d9a514}
+.row{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.center{text-align:center}
+.hero{display:grid;grid-template-columns:1.3fr 1fr;gap:20px;align-items:center}
+@media (max-width:720px){.hero{grid-template-columns:1fr}.hero svg{max-width:240px;margin:0 auto;display:block}}
+.tag{display:inline-block;background:#efeafe;color:var(--pri);font-weight:700;border-radius:99px;padding:2px 12px;font-size:.85em;margin:2px}
+/* map */
+.map{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:16px}
+.lv{position:relative;text-align:left;background:#fff;border-radius:22px;padding:18px 18px 16px;box-shadow:var(--shadow);border:3px solid transparent;min-height:150px;display:flex;flex-direction:column;gap:4px}
+.lv:hover{border-color:var(--pri2)}
+.lv .num{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;font-weight:900;font-size:1.3em;color:#fff}
+.lv .t{font-weight:800;font-size:1.15em}
+.lv .d{color:var(--muted);font-size:.9em;line-height:1.45}
+.lv .st{position:absolute;right:14px;top:14px;font-size:1.3em;letter-spacing:2px}
+.lv.done{border-color:var(--ok)}
+/* intro */
+.notes{display:grid;gap:10px;margin:10px 0}
+.note{background:#fbf9ff;border-left:6px solid var(--pri2);border-radius:12px;padding:10px 14px}
+.three{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 4px}
+.three span{background:#fff4d6;border-radius:10px;padding:2px 10px;font-weight:700;font-size:.9em}
+/* step */
+.qhead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.q{font-size:1.25em;font-weight:800;line-height:1.45;margin:6px 0 14px}
+.opts{display:grid;gap:12px}
+.opt{text-align:left;background:#fff;border:3px solid #e7e1f7;border-radius:16px;padding:14px 18px;font-size:1.02em;min-height:60px;display:flex;gap:12px;align-items:center;transition:background .15s,border-color .15s}
+.opt .k{flex:none;width:36px;height:36px;border-radius:50%;background:#efeafe;color:var(--pri);display:grid;place-items:center;font-weight:900}
+.opt:hover:not([disabled]){border-color:var(--pri2);background:#faf8ff}
+.opt.ok{border-color:var(--ok);background:var(--okbg)}
+.opt.bad{border-color:var(--bad);background:var(--badbg)}
+.opt[disabled]{cursor:default}
+.fb{border-radius:16px;padding:14px 18px;margin-top:16px;font-size:1em;animation:pop .25s}
+.fb.ok{background:var(--okbg);border:2px solid #9be3c3}
+.fb.bad{background:var(--badbg);border:2px solid #f5aab0}
+.fb b.h{font-size:1.15em;display:block;margin-bottom:4px}
+.next{margin-top:16px;text-align:right}
+@keyframes pop{from{transform:scale(.96);opacity:0}to{transform:none;opacity:1}}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-6px)}80%{transform:translateX(6px)}}
+.shake{animation:shake .4s}
+/* bucket */
+.deck{display:flex;justify-content:center;margin:6px 0 16px}
+.bcard{background:linear-gradient(135deg,#fff,#fff7e6);border:3px dashed var(--orange);border-radius:20px;padding:20px 22px;max-width:640px;width:100%;text-align:center;font-size:1.15em;font-weight:700;min-height:110px;display:grid;place-items:center;animation:pop .25s}
+.buckets{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.bk{background:#fff;border:3px solid #e7e1f7;border-radius:18px;padding:12px;text-align:center;min-height:96px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:4px}
+.bk .bl{font-weight:900;font-size:1.08em}
+.bk .bd{font-size:.82em;color:var(--muted);line-height:1.35}
+.bk:hover:not([disabled]){border-color:var(--pri2);transform:translateY(-2px)}
+.bk[disabled]{cursor:default}
+.bk{min-width:0}.bk .chips{width:100%;min-width:0;display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin-top:6px}
+.bk .chips i{font-style:normal;font-size:.72em;background:#f3f0ff;border-radius:8px;padding:1px 7px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bk.ok{border-color:var(--ok);background:var(--okbg)}
+.bk.bad{border-color:var(--bad);background:var(--badbg)}
+.counter{font-weight:800;color:var(--orange)}
+/* order */
+.timeline{display:grid;gap:10px;margin-bottom:16px}
+.slotrow{display:flex;align-items:center;gap:12px;min-height:64px;border:3px dashed #d9d2f3;border-radius:16px;padding:8px 14px;background:#fcfbff}
+.slotrow .n{flex:none;width:40px;height:40px;border-radius:50%;background:#e7e1f7;color:var(--pri);font-weight:900;display:grid;place-items:center}
+.slotrow.filled{border-style:solid;border-color:var(--ok);background:var(--okbg);animation:pop .25s}
+.slotrow.filled .n{background:var(--ok);color:#fff}
+.pool{display:flex;flex-wrap:wrap;gap:10px}
+.chip{background:#fff;border:3px solid #e7e1f7;border-radius:16px;padding:10px 16px;font-weight:700;min-height:58px;text-align:left;box-shadow:0 3px 0 rgba(0,0,0,.06)}
+.chip small{display:block;font-weight:500;color:var(--muted);font-size:.8em}
+.chip:hover{border-color:var(--pri2)}
+.chip.sel{border-color:var(--pri);background:#efeafe;transform:translateY(-3px)}
+.chip.used{opacity:.35;pointer-events:none}
+.chip.okc{border-color:var(--ok);background:var(--okbg);pointer-events:none}
+.chip.badc{border-color:var(--bad);background:var(--badbg)}
+/* match */
+.mgrid{display:grid;grid-template-columns:1fr 1.5fr;gap:14px}
+@media (max-width:640px){.mgrid{grid-template-columns:1fr}}
+.mcol{display:grid;gap:10px;align-content:start}
+.mcol .chip{width:100%}
+/* tree */
+.tree{background:#1f1b2e;color:#e8e4ff;border-radius:18px;padding:18px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:1em;line-height:1.5;overflow-x:auto;margin-bottom:16px}
+.tree .ln{display:flex;align-items:center;min-height:52px;white-space:pre}
+.tree .slot{font-family:inherit;margin-left:4px;background:#2f2a46;color:#c8c0ff;border:2px dashed #6c5ce7;border-radius:12px;padding:6px 12px;min-height:46px;text-align:left;white-space:normal;font-size:.85em}
+.tree .slot.filled{background:#1fb67a;border:2px solid #1fb67a;color:#fff;font-weight:800;font-size:1em}
+.tree .slot.hot{border-color:var(--sun);box-shadow:0 0 0 3px rgba(255,201,60,.35)}
+/* toast */
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);max-width:min(92vw,720px);background:#2b2340;color:#fff;border-radius:16px;padding:14px 20px;z-index:50;font-size:1em;box-shadow:0 10px 30px rgba(0,0,0,.25);animation:pop .2s}
+.toast.bad{background:#b8323c}.toast.ok{background:#138a5b}
+/* end */
+.stars{font-size:3em;letter-spacing:8px}
+.sumgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+.sumitem{background:#fbf9ff;border-radius:14px;padding:10px 14px}
+.mist{border-left:6px solid var(--bad);background:#fff6f7;border-radius:12px;padding:10px 14px;margin:8px 0;font-size:.95em}
+.take{background:#f0fbf6;border-left:6px solid var(--ok);border-radius:12px;padding:10px 14px;margin:8px 0}
+.diagram{width:100%;max-width:760px;display:block;margin:6px auto}
+.conf{position:fixed;top:-20px;z-index:60;width:12px;height:18px;border-radius:3px;animation:fall linear forwards;pointer-events:none}
+@keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
+.small{font-size:.85em}
+.src{font-size:.78em;color:var(--muted)}
+.minidoc{background:#fff;border:2px solid #e7e1f7;border-radius:14px;padding:10px 14px;font-size:.8em;line-height:1.45}
+.vs{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+@media (max-width:640px){.vs{grid-template-columns:1fr}}
+.hide{display:none!important}
+</style>
+</head>
+<body>
+<div class="top"><div class="in">
+  <div class="brand"><svg width="34" height="34" viewBox="0 0 100 100" aria-hidden="true"><rect x="18" y="28" width="64" height="52" rx="16" fill="#6c5ce7"/><circle cx="38" cy="54" r="8" fill="#fff"/><circle cx="62" cy="54" r="8" fill="#fff"/><circle cx="39" cy="55" r="4" fill="#2b2340"/><circle cx="63" cy="55" r="4" fill="#2b2340"/><rect x="47" y="10" width="6" height="18" fill="#6c5ce7"/><circle cx="50" cy="10" r="7" fill="#ffc93c"/></svg>智能体评测闯关</div>
+  <div class="bar" title="总进度"><i id="bar"></i></div>
+  <span class="pill" id="score">⭐ 0</span>
+  <button class="tbtn" id="btnMap">🗺️ 关卡</button>
+  <button class="tbtn" id="btnRestart">🔄 重新开始</button>
+</div></div>
+<main class="wrap" id="app"></main>
+
+<script>
+/* ============ 题库：全部依据讲义《Evaluating Agents: Terminal-Bench and Harbor》 ============ */
+const COLORS=['#ff9f43','#55c3f0','#6c5ce7','#ff7eb6','#e8505b','#1fb67a','#f0a500'];
+const LEVELS=[
+/* ---------- 第 1 关 ---------- */
+{ id:1, icon:'🕰️', title:'软件开发时光机', desc:'给软件开发的演进排序，分清“演绎式”和“归纳式”。',
+  notes:[
+    '1940 年代：直接给 CPU 写数字指令，例如 <code>48 83 C0 05</code>；1950 年代初：写汇编 <code>add rax, 5</code>；1950 年代末：写高级语言 <code>x += 5</code>。',
+    '<b>演绎式 (Deductive)</b>：规则 + 输入 → 输出。人写规则（代码），程序把规则用在新输入上。',
+    '<b>归纳式 (Inductive)</b>：输入 + 输出 → 规则。人提供示例（数据 + 标签），训练推断出规则（模型）。',
+    '讲者的判断：所有数字技术的开发都在变成归纳式——模型从数据中学习，智能体通过<b>评测 (Evaluation)</b> 来开发，软件由智能体生成。'
+  ],
+  steps:[
+    {type:'order', q:'按出现的先后顺序，依次点击卡片 👇',
+     items:[{t:'机器码',s:'48 83 C0 05（1940 年代）'},{t:'汇编语言',s:'add rax, 5（1950 年代初）'},{t:'高级语言',s:'x += 5（1950 年代末）'},{t:'机器学习 (ML)',s:'从数据中学规则'},{t:'大语言模型 (LLM)',s:'Software → ML → LLMs'},{t:'智能体 (Agent)',s:'→ Agents'}],
+     why:'讲义的主线：机器码 → 汇编 → 高级语言 → 机器学习 → 大语言模型 → 智能体。前三步是“人写规则”越来越方便；从机器学习开始，规则改由数据“学”出来。'},
+    {type:'bucket', q:'这张卡片属于哪种技术开发方式？',
+     buckets:[{id:'D',label:'演绎式 (Deductive)',desc:'规则 + 输入 → 输出'},{id:'I',label:'归纳式 (Inductive)',desc:'输入 + 输出 → 规则'}],
+     items:[
+      {t:'人类编写规则（代码）',b:'D',why:'人亲手写下规则，正是传统编程——演绎式。'},
+      {t:'人类提供示例（数据 + 标签）',b:'I',why:'给出输入和对应的输出，让系统自己总结规律——归纳式。'},
+      {t:'程序把写好的规则应用到新输入上',b:'D',why:'规则已知、推出结果，属于演绎式。'},
+      {t:'通过训练推断出规则（得到模型）',b:'I',why:'规则是训练“学”出来的，属于归纳式。'},
+      {t:'智能体通过评测来开发',b:'I',why:'讲义把“智能体（通过评测开发）”列为归纳式开发的一种：用评测结果反复改进，而不是先写死规则。'}
+     ]},
+    {type:'mcq', q:'霍尔 (Tony Hoare) 1969 年写道：编程是一门精确科学，程序的所有性质原则上都能从程序文本中，通过哪种推理得出？',
+     opts:['纯粹的演绎推理','大量的实验统计','用户的使用反馈','模型的训练数据'], a:0,
+     why:'原文是 “by means of purely deductive reasoning”（纯粹的演绎推理）。这代表“代码是真相来源”的传统软件观。'},
+    {type:'mcq', q:'讲义写道：“规格 (Specification) → ？”。过去写规格的人是软件工程师，那在智能体时代，箭头右边换成了什么？',
+     opts:['评测 (Evaluation)','更长的代码注释','更大的模型','更多的程序员'], a:0,
+     why:'讲义原文：Specification → Evaluation；Specifier = Software Engineer，Evaluator = ? 意思是：真相来源从“规则”转向“输出”，写评测的人变得像过去写规格的工程师一样关键。'}
+  ]},
+/* ---------- 第 2 关 ---------- */
+{ id:2, icon:'🔤', title:'术语连连看', desc:'认识 Terminal-Bench，把 7 个评测核心术语与定义配对。',
+  notes:[
+    '<b>Terminal-Bench</b> 的核心洞见：<b>bash 是“一个工具统治一切”</b>——智能体在终端里用命令行完成真实任务。',
+    '讲义列出的社区规模：64 份模型卡片、171 位贡献者、1k+ GitHub 参与者、5k+ Discord 社区成员、<b>700 万+ 次基准运行</b>。',
+    '术语定义来自讲义引用的 Anthropic 文章《Demystifying evals for AI agents》。'
+  ],
+  steps:[
+    {type:'match', q:'先点左边的术语，再点右边对应的定义 🔗',
+     pairs:[
+      {l:'任务 (Task)',r:'一个单独的测试，有明确的输入和成功标准'},
+      {l:'试验 (Trial)',r:'对某个任务的一次尝试'},
+      {l:'基准 (Benchmark)',r:'衡量特定能力的一组任务（也叫评测集 Evaluation Suite）'},
+      {l:'验证器 (Verifier)',r:'给智能体表现打分的逻辑（也叫评分器 Grader）'},
+      {l:'轨迹 (Trajectory)',r:'一次试验的完整记录（也叫 Trace / Transcript）'},
+      {l:'评测框架 (Evaluation Harness)',r:'端到端运行评测的基础设施'},
+      {l:'智能体框架 (Agent Harness)',r:'让模型能够作为智能体行动的系统'}
+     ],
+     why:'记忆口诀：任务是“考题”，试验是“一次作答”，基准是“整套试卷”，验证器是“阅卷规则”，轨迹是“作答全过程录像”，评测框架是“考场系统”，智能体框架是“让模型能动手的工具箱”。'},
+    {type:'mcq', q:'讲义的例子：要求智能体根据 /app/schematic.png 的二维图纸，输出 STEP 文件到 /app/out.step。<br>那么 <code>assert watertight()</code>（检查模型是否封闭无漏洞）属于哪个部分？',
+     opts:['验证器 / 测试 (tests)','任务指令 (instruction.md)','环境 (Dockerfile)','智能体框架 (Agent Harness)'], a:0,
+     why:'<code>assert ...</code> 出现在 TEST/TEST_OUTPUTS.PY 里，是验证器的检查项。这个例子里有 9 条检查：文件有效、封闭、体积、表面积、主惯性矩、凸包体积与面积、拓扑、平均曲率。'},
+    {type:'mcq', q:'在同一个任务上让智能体跑了 5 次，得到 5 份完整记录。这 5 次运行和 5 份记录分别叫什么？',
+     opts:['5 次试验 (Trial)，5 条轨迹 (Trajectory)','5 个任务 (Task)，5 个基准 (Benchmark)','5 个验证器，5 个评测框架','5 个基准，5 条指令'], a:0,
+     why:'试验 = 对任务的一次尝试；轨迹 = 一次试验的完整记录。任务本身只有 1 个。'},
+    {type:'mcq', q:'讲义里提到 Terminal-Bench 累计的基准运行次数大约是多少？',
+     opts:['700 万次以上 (7M+)','7 千次','70 次','7 亿次'], a:0,
+     why:'讲义数字：7M+ benchmark runs（700 万次以上）。另有 171 位贡献者、5k+ Discord 社区成员。'}
+  ]},
+/* ---------- 第 3 关 ---------- */
+{ id:3, icon:'🧩', title:'拼装一个任务', desc:'把文件放进 my-task/ 的正确位置，搞清楚每个文件管什么。',
+  notes:[
+    '在 Harbor 里，一个任务就是一个文件夹 <code>my-task/</code>：指令、配置、环境、参考解、测试各就各位。',
+    '好任务的特点：<b>与智能体无关 (Agent Agnostic)</b>、<b>易于定义</b>、<b>可移植 (Portable)</b>、<b>表达力强 (Expressive)</b>、<b>相互独立 (Independent)</b>。'
+  ],
+  steps:[
+    {type:'slots', q:'点一下下方的文件卡片，再点目录里的空位，把它放进去 📁',
+     lines:[
+      {pre:'my-task/'},
+      {pre:'├── ',slot:'instruction.md',hint:'给智能体看的任务说明'},
+      {pre:'├── ',slot:'task.toml',hint:'任务的配置文件'},
+      {pre:'├── environment/'},
+      {pre:'│   ├── ',slot:'Dockerfile',hint:'搭建智能体工作的环境'},
+      {pre:'├── solution/'},
+      {pre:'│   ├── ',slot:'solve.sh',hint:'参考解：证明任务能做出来'},
+      {pre:'│   └── ...'},
+      {pre:'└── tests/'},
+      {pre:'    ├── ',slot:'test.sh',hint:'验证器：检查结果对不对'},
+      {pre:'    └── ...'}
+     ],
+     why:'instruction.md＝考题；task.toml＝任务配置；environment/Dockerfile＝考场（智能体在哪里干活）；solution/solve.sh＝标准答案的“解题过程”；tests/test.sh＝阅卷规则。'},
+    {type:'bucket', q:'讲义的 STEP 文件例子：这一行应该写在哪个文件里？',
+     buckets:[{id:'I',label:'instruction.md',desc:'指令'},{id:'E',label:'environment/Dockerfile',desc:'环境'},{id:'T',label:'tests/',desc:'验证器'}],
+     items:[
+      {t:'请在 /app/out.step 输出一个 STEP 文件，内容是 /app/schematic.png 图纸描述的物体',b:'I',why:'这是对智能体说的话：要做什么、交到哪里——属于指令。'},
+      {t:'<code>FROM python:3.12-slim</code>',b:'E',why:'选择基础镜像，是在搭环境。'},
+      {t:'<code>COPY schematic.png /app/schematic.png</code>',b:'E',why:'把图纸放进环境里，智能体才能读到它。'},
+      {t:'<code>assert correct_volume()</code>',b:'T',why:'检查体积是否正确，是验证器的工作。'},
+      {t:'<code>assert valid_step_file()</code>',b:'T',why:'检查输出是不是有效的 STEP 文件，属于测试。'}
+     ]},
+    {type:'mcq', q:'同一个任务文件夹，不改一个字，就能拿去评测不同公司的智能体。这体现了好任务的哪个特点？',
+     opts:['与智能体无关 (Agent Agnostic)','表达力强 (Expressive)','易于定义 (Easy to define)','相互独立 (Independent)'], a:0,
+     why:'任务不绑定某个特定智能体，任何智能体都能来“考”这道题，这就是 Agent Agnostic。'},
+    {type:'mcq', q:'任务能在本地电脑上跑，也能搬到云端沙箱里跑，结果一样。这体现了哪个特点？',
+     opts:['可移植 (Portable)','与智能体无关 (Agent Agnostic)','相互独立 (Independent)','表达力强 (Expressive)'], a:0,
+     why:'环境用 Dockerfile 定义好，搬到哪里都能复现，这就是可移植。'}
+  ]},
+/* ---------- 第 4 关 ---------- */
+{ id:4, icon:'🔍', title:'指令与验证器找茬', desc:'判断指令写得好不好、验证器测得准不准，认识 TP/FP/FN/TN。',
+  notes:[
+    '写任务先问两句：<b>你在测什么？你测对了吗？</b> 要点：对齐指令和验证器、防止奖励作弊、真实公平又有趣。',
+    '<b>指令 (Instruction)</b>：完整说明 (Fully specified)、尽量简洁、尽量自然。',
+    '<b>验证器 (Verifier)</b>：根据环境最终状态做判断的“结果分类器”；与指令中的要求<b>一一对应</b>；可以用程序化检查，也可以用智能体/LLM 评审 (Judge)。',
+    '讲义中的真实反馈：在“完整说明”的前提下尽量精简；不要写智能体能从环境中自己查到的信息（如 FreeCAD 版本）；去掉不必要的 LLM 式排版（加粗、破折号）、模板化小标题和重复内容。'
+  ],
+  steps:[
+    {type:'mcq', q:'讲义里一份 FreeCAD 任务指令收到了修改反馈。下面哪一项<b>不应该</b>被删掉？',
+     pre:'<div class="vs"><div class="minidoc"><b>原稿（节选）</b><br>**Base part description:** …<br>FreeCAD version: 0.21.2<br>**Base part key parameters:** … — … — …<br>**Target key parameters:** （大量重复的参数）</div><div class="minidoc"><b>修改后（节选）</b><br>写一个 FreeCAD Python 脚本 /app/answer.py，保存两个参数化 FCStd 文件……<br>参数（单位 mm、度）：back_disk_outer_diameter = 192 …</div></div>',
+     opts:['完成任务必需的参数和尺寸','智能体能从环境里自己查到的信息（如软件版本）','不必要的加粗、破折号等 LLM 式排版','模板化的小标题和重复冗余的内容'], a:0,
+     why:'“尽量简洁”的前提是“完整说明”。必需的参数删了，任务就变成猜谜，成功的智能体也可能被判失败。其余三项都是反馈中明确要求删去的。'},
+    {type:'bucket', q:'这是好的做法，还是有问题？',
+     buckets:[{id:'G',label:'✅ 好做法',desc:''},{id:'B',label:'❌ 有问题',desc:''}],
+     items:[
+      {t:'指令只写“做一个零件”，没给尺寸，测试却检查体积',b:'B',why:'指令没有完整说明，智能体无从知道要多大——违反“完整说明”和“一一对应”。'},
+      {t:'测试检查了一项指令里从来没提过的要求',b:'B',why:'验证器要与指令中的要求一一对应。检查额外要求，会让做对的智能体被误判失败。'},
+      {t:'指令里的每一条要求，都有对应的测试来检查',b:'G',why:'这就是“与指令要求一一对应”。'},
+      {t:'验证器检查环境的最终状态（如输出文件是否正确），而不规定智能体必须走哪几步',b:'G',why:'讲义：验证器是“基于环境状态的结果分类器”，看结果，不看过程。'},
+      {t:'对难以写成程序判断的质量，引入智能体/LLM 评审 (Judge)',b:'G',why:'讲义列出两类验证方式：程序化检查和智能体/LLM 评审。'},
+      {t:'指令写得像模板：层层加粗小标题，同一组参数重复写三遍',b:'B',why:'违反“尽量简洁、尽量自然”，也是讲义反馈中点名要删去的。'}
+     ]},
+    {type:'bucket', q:'用“混淆矩阵 (Confusion Matrix)”给验证器的判断归类：',
+     buckets:[{id:'TP',label:'真阳性 TP',desc:'判通过，确实做对'},{id:'FP',label:'假阳性 FP',desc:'判通过，其实没做对'},{id:'FN',label:'假阴性 FN',desc:'判失败，其实做对了'},{id:'TN',label:'真阴性 TN',desc:'判失败，确实没做对'}],
+     items:[
+      {t:'智能体正确生成了 STEP 文件，验证器判“通过”',b:'TP',why:'做对了，也判对了：真阳性。'},
+      {t:'智能体利用评分器的漏洞“骗”过检查，验证器判“通过”',b:'FP',why:'没有真正完成却得了分：假阳性。奖励作弊就会制造假阳性。'},
+      {t:'智能体做对了，但验证器过于严格（卡了指令里没写的格式），判“失败”',b:'FN',why:'做对了却被判错：假阴性。讲义版本表里的“修复过于严格的验证器”正是针对这种情况。'},
+      {t:'智能体没做完就停了，验证器判“失败”',b:'TN',why:'没做对，判失败也对：真阴性。'}
+     ]}
+  ]},
+/* ---------- 第 5 关 ---------- */
+{ id:5, icon:'🛡️', title:'防作弊特训', desc:'识别奖励作弊 (Reward Hacking)，学会用隔离来防守。',
+  notes:[
+    '<b>奖励作弊 (Reward Hacking)</b>：智能体没有真正完成任务，却想办法让验证器给出高分。',
+    '三道防线：<b>锁定智能体环境</b> (Locked down agent environment)、<b>验证器环境隔离</b> (Verifier environment isolation)、<b>智能体代码执行隔离</b> (Agent code execution isolation)。',
+    '讲义中的真实案例（2026 年 9 月）：在 Terminal Bench Science 中，模型上网搜索 Lean 内核的已知漏洞，再利用它构造证明，试图对抗性地通过评分器。',
+    '<b>参考解 (Solution)</b> 用来调试验证器和环境，应尽量模仿智能体会采取的操作，<b>不要硬编码答案</b>。'
+  ],
+  diagram:true,
+  steps:[
+    {type:'mcq', q:'看上面的示意图：测试文件 (tests) 应该放在哪里？',
+     opts:['只放在验证器环境里，智能体看不到','放在智能体环境里，方便它自查','两边各放一份','写进指令里告诉智能体'], a:0,
+     why:'讲义图示：智能体环境只产出“产物 (Artifact)”，产物被送到验证器环境，再与测试一起运行。测试不进入智能体环境，智能体就没法照着测试“对答案”或改动测试。'},
+    {type:'bucket', q:'情景练习：哪道防线最直接地挡住这种作弊？<br><span class="small muted">（情景依据讲义原则改编，用于练习判断）</span>',
+     buckets:[{id:'L',label:'锁定智能体环境',desc:'限制智能体能接触到的东西'},{id:'V',label:'验证器环境隔离',desc:'测试与评分在另一个环境'},{id:'X',label:'代码执行隔离',desc:'智能体写的代码被隔离运行'}],
+     items:[
+      {t:'智能体在自己的环境里翻到了 tests/ 文件夹，照着测试写答案',b:'V',why:'测试只应出现在验证器环境里；智能体环境里看不到，就无从“对答案”。'},
+      {t:'智能体改写评分脚本，让它永远返回“通过”',b:'V',why:'评分在独立的验证器环境中进行，智能体只能交出产物，碰不到评分脚本。'},
+      {t:'环境镜像里不小心留下了参考解 solve.sh',b:'L',why:'智能体环境要锁定：不该看到的东西（如参考解）不能出现在里面。'},
+      {t:'智能体上网搜索评分器的已知漏洞（类似讲义中的 Lean 内核案例）',b:'L',why:'锁定智能体环境包括控制它能访问什么。讲义也提醒：开放互联网有利有弊 (tradeoffs)。'},
+      {t:'智能体提交的程序在被检查时偷偷改写系统文件，伪造运行结果',b:'X',why:'智能体写的代码需要隔离执行，避免它影响评分所在的系统。'}
+     ]},
+    {type:'mcq', q:'写参考解 <code>solution/solve.sh</code> 时，下面哪种做法最好？',
+     opts:['按智能体会采取的步骤，真实地把问题解出来','直接把正确答案写进输出文件（硬编码）','不写参考解，反正测试会检查','把参考解复制一份放进智能体环境'], a:0,
+     why:'讲义：参考解用于调试验证器和环境，要尽量模仿智能体的真实操作 (no hardcode)。硬编码答案只能证明“答案对”，证明不了“这条路走得通、环境没问题”。'},
+    {type:'mcq', q:'讲义的 Lean 案例中，模型找到 Lean 内核漏洞并用它“证明”通过。对验证器来说，这属于哪种错误？',
+     opts:['假阳性 (FP)：没真做对，却判通过','假阴性 (FN)：做对了却判失败','真阳性 (TP)','真阴性 (TN)'], a:0,
+     why:'利用漏洞骗过评分器=假阳性。它会让分数虚高，所以防作弊是写任务的重点之一。'}
+  ]},
+/* ---------- 第 6 关 ---------- */
+{ id:6, icon:'🏷️', title:'版本号小法官', desc:'任务也是软件：判断一次修改该升哪一位版本号。',
+  notes:[
+    '<b>任务就是软件，软件就会有 bug。</b> 使用中会冒出：不稳定 (Flakiness)、基础设施噪声/兼容问题、新模型带来新行为、假阴性、奖励作弊。',
+    '任务质检 (Task QA)：任务会以微妙的方式出错，要避开反模式，结合<b>静态检查</b>与<b>智能体检查</b>（智能体评审、oracle 智能体、前沿智能体、作弊智能体，并让智能体评审查看轨迹）。',
+    '版本号 (x, y, z)：<b>x+1 = 重跑 (rerun)</b>，改了智能体环境；<b>y+1 = 重新评分 (regrade)</b>，改了验证器；<b>z+1 = 复用 (reuse)</b>，只改元数据。'
+  ],
+  steps:[
+    {type:'bucket', q:'这次修改，应该升哪一位版本号？',
+     buckets:[{id:'x',label:'x+1 重跑',desc:'智能体环境变了'},{id:'y',label:'y+1 重新评分',desc:'验证器变了'},{id:'z',label:'z+1 复用',desc:'只改元数据'}],
+     items:[
+      {t:'新增一个任务',b:'x',why:'讲义归入 x+1：全新的任务当然要重新跑。'},
+      {t:'修复说明不足 (underspecified) 的指令',b:'x',why:'指令变了，智能体看到的题目变了，行为也会变，必须重跑。'},
+      {t:'修复说明过度 (overspecified) 的指令',b:'x',why:'同上，智能体收到的指令不同，要重跑。'},
+      {t:'修改数据和工具',b:'x',why:'智能体能用的东西变了，要重跑。'},
+      {t:'调整智能体可用的资源',b:'x',why:'资源影响智能体的表现，要重跑。'},
+      {t:'修复过于严格的验证器',b:'y',why:'智能体的产物不变，只需用新的验证器重新打分。'},
+      {t:'消除奖励作弊的漏洞（在验证器里）',b:'y',why:'讲义把“消除奖励作弊”放在验证器一栏：重新评分即可。'},
+      {t:'重新调校一个评审 (Judge)',b:'y',why:'评审属于验证器，重新评分。'},
+      {t:'改变奖励的计算方式',b:'y',why:'打分规则变了，重新评分。'},
+      {t:'更新文档',b:'z',why:'不影响智能体，也不影响打分，旧结果可直接复用。'},
+      {t:'修复 oracle（参考解）的不稳定',b:'z',why:'讲义归入元数据级：智能体的结果和评分都不受影响。'},
+      {t:'固定会变动的依赖版本 (Pin moving dependencies)',b:'z',why:'讲义归入 z+1：结果可以复用。'},
+      {t:'修正指令里的一个错别字',b:'z',why:'讲义把“修正 prompt 中的错别字”列在 z+1：不改变题意，结果复用。注意和“修复说明不足”区分。'}
+     ]},
+    {type:'mcq', q:'为什么修复验证器只需要“重新评分 (regrade)”，而不用让智能体“重跑 (rerun)”？',
+     opts:['智能体看到的环境没变，它留下的产物和轨迹还能用，只需换新验证器重新打分','因为验证器不重要','因为重跑太贵，所以干脆不管','因为智能体每次表现都一样'], a:0,
+     why:'智能体环境没变，已有的产物可以直接交给新验证器。这正是讲义 Results 页强调保留“完整凭证”（轨迹、日志、产物、奖励）的意义之一。'},
+    {type:'mcq', q:'任务质检中的“作弊智能体 (cheat agents)”最可能用来做什么？',
+     opts:['故意尝试钻空子，检查任务能不能被奖励作弊','替代验证器给分','给任务写指令','让任务跑得更快'], a:0,
+     why:'讲义把作弊智能体与静态检查、智能体评审、oracle 智能体、前沿智能体并列为质检手段。它的作用就是主动“找漏洞”，在正式评测前发现假阳性风险。'}
+  ]},
+/* ---------- 第 7 关 ---------- */
+{ id:7, icon:'🌏', title:'新旧两个世界', desc:'对比传统软件与智能体世界，排出“优秀评测路线图”。',
+  notes:[
+    '<b>TBench → Harbor</b>：从“我们做一个基准”到“让大家做出成千上万个基准”；从“我们来做评测”到“你来做评测”；从“经验”到“工具”。Harbor 是面向评测驱动开发的工具，用来理解和改进智能体。',
+    '评测基础设施要：<b>可靠</b>（容错）、<b>可复现</b>、<b>快</b>（并行运行相互独立的试验）、<b>可移植</b>（本地和云端沙箱）。',
+    '结果 (Results)：每一行都有<b>完整凭证</b>——每次试验的轨迹、日志、产物和奖励。'
+  ],
+  steps:[
+    {type:'bucket', q:'这一条属于哪个世界？',
+     buckets:[{id:'O',label:'⌨️ 传统软件',desc:'[BEFORE]'},{id:'N',label:'🤖 智能体世界',desc:'[NOW]'}],
+     items:[
+      {t:'代码是真相来源',b:'O',why:'传统软件：代码 (Code) 说了算。'},
+      {t:'评测是真相来源',b:'N',why:'智能体世界：评测 (Evals) 说了算。'},
+      {t:'确定性的 (Deterministic)',b:'O',why:'同样输入，同样输出。'},
+      {t:'随机性的 (Stochastic)',b:'N',why:'同一任务多次试验，结果可能不同——所以要多跑几次试验。'},
+      {t:'演绎式的 (Deductive)',b:'O',why:'从规则推出结果。'},
+      {t:'经验式的 (Empirical)',b:'N',why:'靠实验和观察来判断好坏。'},
+      {t:'软件是手工打造的',b:'O',why:'Software is handcrafted。'},
+      {t:'软件是学出来的',b:'N',why:'Software is learned。'}
+     ]},
+    {type:'order', base0:true, q:'排出讲义引用的“优秀评测路线图 (Roadmap to Excellent Evals)”，从第 0 步点到第 8 步 👇',
+     items:[{t:'现在就开始，尽早开始',s:'评测集开发'},{t:'从手动测试开始',s:'评测集开发'},{t:'写没有歧义的任务',s:'评测集开发'},{t:'覆盖正例和反例',s:'评测集开发'},{t:'搭建稳健的评测框架',s:'框架开发'},{t:'用心设计评分器',s:'框架开发'},{t:'检查轨迹',s:'评测维护'},{t:'监测是否饱和',s:'评测维护'},{t:'长期维护',s:'评测维护'}],
+     why:'三个阶段：评测集开发（0–3）→ 框架开发（4–5）→ 评测维护（6–8）。来源：讲义引用的 Anthropic 文章。'},
+    {type:'mcq', q:'评测基础设施为什么能通过“并行”来加速？',
+     opts:['因为各次试验相互独立，可以同时跑','因为并行会让智能体更聪明','因为并行可以跳过验证器','因为任务之间必须共享同一个环境'], a:0,
+     why:'讲义原文：FAST (parallelize independent trials)。试验彼此独立，才能放心并行。'},
+    {type:'mcq', q:'讲义说结果表的“每一行都要有完整凭证 (full receipts)”。凭证包括什么？',
+     opts:['每次试验的轨迹、日志、产物和奖励','只有最终分数','只有模型名字','只有任务指令'], a:0,
+     why:'讲义原文：PER TRIAL TRAJECTORY, LOGS, ARTIFACTS, REWARDS。有了凭证，才能复查、发现奖励作弊，也能在验证器修复后重新评分。'}
+  ]}
+];
+const TAKEAWAYS=[
+  '数字技术开发正从“人写规则”（演绎式）走向“从数据和评测中学”（归纳式），评测成为新的真相来源。',
+  '七个术语：任务、试验、基准、验证器、轨迹、评测框架、智能体框架。',
+  '一个任务 = instruction.md + task.toml + environment/ + solution/ + tests/。',
+  '指令要完整、简洁、自然；验证器要与指令要求一一对应，警惕假阳性和假阴性。',
+  '防奖励作弊靠隔离：锁定智能体环境、验证器环境隔离、代码执行隔离；参考解不硬编码。',
+  '任务也是软件：x+1 重跑、y+1 重新评分、z+1 复用。',
+  '好结果要有完整凭证：轨迹、日志、产物、奖励。'
+];
+
+/* ============ 引擎 ============ */
+const $=s=>document.querySelector(s);
+const app=$('#app');
+let S;
+function freshState(){return {lv:null,st:0,res:LEVELS.map(()=>({got:0,tot:0,done:false})),mist:[],cur:null}}
+S=freshState();
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const strip=h=>{const d=document.createElement('div');d.innerHTML=h;return d.textContent};
+function stepPoints(st){return st.type==='mcq'?1:st.type==='order'?st.items.length:st.type==='match'?st.pairs.length:st.type==='slots'?st.lines.filter(l=>l.slot).length:st.items.length}
+const TOTAL=LEVELS.reduce((s,l)=>s+l.steps.reduce((a,st)=>a+stepPoints(st),0),0);
+function award(ok){const r=S.res[S.lv];r.tot++;if(ok)r.got++;updTop()}
+function logMist(q,yours,right,why){S.mist.push({lv:S.lv,q:strip(q),yours:strip(yours),right:strip(right),why:strip(why)})}
+function updTop(){
+  const got=S.res.reduce((a,r)=>a+r.got,0), tot=S.res.reduce((a,r)=>a+r.tot,0);
+  $('#score').textContent='⭐ '+got+' 分';
+  $('#bar').style.width=Math.round(tot/TOTAL*100)+'%';
+}
+function starsOf(r){if(!r.tot)return 0;const p=r.got/r.tot;return p>=.9?3:p>=.7?2:1}
+const starStr=n=>'★'.repeat(n)+'☆'.repeat(3-n);
+let toastT;function toast(msg,cls=''){let t=$('.toast');if(t)t.remove();t=document.createElement('div');t.className='toast '+cls;t.innerHTML=msg;document.body.appendChild(t);clearTimeout(toastT);toastT=setTimeout(()=>t.remove(),3200)}
+function confetti(n=60){const cs=['#ff9f43','#55c3f0','#6c5ce7','#ff7eb6','#1fb67a','#ffc93c'];for(let i=0;i<n;i++){const c=document.createElement('i');c.className='conf';c.style.left=Math.random()*100+'vw';c.style.background=cs[i%cs.length];c.style.animationDuration=(1.6+Math.random()*1.8)+'s';c.style.animationDelay=Math.random()*.5+'s';document.body.appendChild(c);setTimeout(()=>c.remove(),4200)}}
+function scrollTop(){window.scrollTo({top:0,behavior:'smooth'})}
+
+const ROBOT=`<svg viewBox="0 0 220 220" aria-hidden="true" style="width:100%;max-width:300px">
+<circle cx="110" cy="120" r="96" fill="#ffe7b3"/>
+<rect x="104" y="22" width="12" height="30" rx="6" fill="#6c5ce7"/><circle cx="110" cy="20" r="12" fill="#ffc93c"/>
+<rect x="44" y="50" width="132" height="104" rx="34" fill="#6c5ce7"/>
+<rect x="60" y="68" width="100" height="62" rx="22" fill="#1f1b2e"/>
+<circle cx="88" cy="99" r="11" fill="#5fd6b4"/><circle cx="132" cy="99" r="11" fill="#5fd6b4"/>
+<path d="M95 116 q15 12 30 0" stroke="#5fd6b4" stroke-width="5" fill="none" stroke-linecap="round"/>
+<rect x="70" y="156" width="80" height="44" rx="16" fill="#a29bfe"/>
+<text x="110" y="185" text-anchor="middle" font-size="20" font-family="monospace" fill="#fff" font-weight="bold">$ _</text>
+<circle cx="38" cy="104" r="14" fill="#ff7eb6"/><circle cx="182" cy="104" r="14" fill="#55c3f0"/>
+</svg>`;
+
+const DIAGRAM=`<svg class="diagram" viewBox="0 0 760 200" role="img" aria-label="智能体环境与验证器环境隔离示意图">
+<rect x="10" y="20" width="280" height="160" rx="20" fill="#fff1f2" stroke="#e8505b" stroke-width="3"/>
+<text x="150" y="55" text-anchor="middle" font-size="22" font-weight="bold" fill="#2b2340">智能体环境 AGENT ENV</text>
+<text x="150" y="82" text-anchor="middle" font-size="16" fill="#6b6385">智能体在这里干活（锁定）</text>
+<rect x="85" y="105" width="130" height="50" rx="12" fill="#ffc93c"/><text x="150" y="137" text-anchor="middle" font-size="18" font-weight="bold" fill="#3b2a00">产物 Artifact</text>
+<path d="M298 130 L408 130" stroke="#6c5ce7" stroke-width="6" marker-end="url(#ah)"/>
+<text x="360" y="108" text-anchor="middle" font-size="15" fill="#6c5ce7" font-weight="bold">只传产物</text>
+<defs><marker id="ah" markerUnits="userSpaceOnUse" markerWidth="20" markerHeight="20" refX="2" refY="5" viewBox="0 0 10 10" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#6c5ce7"/></marker></defs>
+<rect x="430" y="20" width="320" height="160" rx="20" fill="#e3f8ee" stroke="#1fb67a" stroke-width="3"/>
+<text x="590" y="55" text-anchor="middle" font-size="22" font-weight="bold" fill="#2b2340">验证器环境 VERIFIER ENV</text>
+<text x="590" y="82" text-anchor="middle" font-size="16" fill="#6b6385">与智能体隔离</text>
+<rect x="450" y="105" width="130" height="50" rx="12" fill="#ffc93c"/><text x="515" y="137" text-anchor="middle" font-size="18" font-weight="bold" fill="#3b2a00">产物 Artifact</text>
+<rect x="600" y="105" width="130" height="50" rx="12" fill="#55c3f0"/><text x="665" y="137" text-anchor="middle" font-size="18" font-weight="bold" fill="#fff">测试 Tests</text>
+</svg>`;
+
+/* ---- screens ---- */
+function renderStart(){
+  S.lv=null;updTop();
+  app.innerHTML=`<section class="card"><div class="hero"><div>
+   <span class="tag">斯坦福 CS 329Z 讲义改编</span><span class="tag">7 关 · 约 20 分钟</span>
+   <h1>智能体评测闯关</h1>
+   <p class="big">跟着《评测智能体：Terminal-Bench 与 Harbor》的讲义，一关一关学会：<b>说得清</b>概念、<b>做得出</b>任务、<b>认得出</b>错误。</p>
+   <p class="muted small">讲者：Alex Shaw、Ryan Marten · 2026 年 10 月 26 日</p>
+   <div class="row" style="margin-top:14px"><button class="btn" id="go">▶ 开始闯关</button><button class="btn sec" id="map">🗺️ 选择关卡</button></div>
+  </div>${ROBOT}</div></section>
+  <section class="card"><h3>怎么玩</h3>
+   <div class="notes"><div class="note">① 每关先看<b>知识卡</b>（1 分钟），再动手答题。</div>
+   <div class="note">② 每答一次，都会告诉你<b>为什么对 / 为什么错</b>。第一次就答对才得分。</div>
+   <div class="note">③ 通关看星星 ★★★，最后有<b>总结卡</b>和<b>错题回顾</b>。右上角随时可以“重新开始”。</div></div></section>`;
+  $('#go').onclick=()=>openLevel(0);$('#map').onclick=renderMap;scrollTop();
+}
+function renderMap(){
+  S.lv=null;updTop();
+  const allDone=S.res.every(r=>r.done);
+  app.innerHTML=`<h2>🗺️ 关卡地图</h2><p class="muted">建议按顺序闯关，也可以直接点任意一关。</p>
+  <div class="map">${LEVELS.map((l,i)=>{const r=S.res[i];return `<button class="lv ${r.done?'done':''}" data-i="${i}">
+   <span class="st">${r.done?`<span style="color:#f0a500">${starStr(starsOf(r))}</span>`:''}</span>
+   <span class="num" style="background:${COLORS[i]}">${i+1}</span>
+   <span class="t">${l.icon} ${l.title}</span><span class="d">${l.desc}</span></button>`}).join('')}</div>
+  <div class="center" style="margin-top:22px">${allDone?'<button class="btn sun" id="fin">🏆 查看总结卡</button>':''}</div>`;
+  app.querySelectorAll('.lv').forEach(b=>b.onclick=()=>openLevel(+b.dataset.i));
+  if(allDone)$('#fin').onclick=renderFinal;scrollTop();
+}
+function openLevel(i){
+  S.lv=i;S.st=0;S.res[i]={got:0,tot:0,done:false};S.mist=S.mist.filter(m=>m.lv!==i);updTop();
+  const l=LEVELS[i];
+  app.innerHTML=`<section class="card"><div class="qhead"><span class="tag" style="background:${COLORS[i]};color:#fff">第 ${i+1} 关 / 共 ${LEVELS.length} 关</span><span class="muted">${l.steps.length} 个挑战</span></div>
+   <h2>${l.icon} ${l.title}</h2><p class="muted">${l.desc}</p>
+   <h3>📘 知识卡</h3><div class="notes">${l.notes.map(n=>`<div class="note">${n}</div>`).join('')}</div>
+   ${l.diagram?DIAGRAM:''}
+   <div class="center" style="margin-top:16px"><button class="btn go" id="startLv">我看懂了，开始挑战 →</button></div></section>`;
+  $('#startLv').onclick=()=>renderStep();scrollTop();
+}
+function stepShell(inner){
+  const l=LEVELS[S.lv];const ot=$('.toast');if(ot)ot.remove();
+  app.innerHTML=`<section class="card"><div class="qhead"><span class="tag" style="background:${COLORS[S.lv]};color:#fff">第 ${S.lv+1} 关 · ${l.title}</span><span class="muted">挑战 ${S.st+1} / ${l.steps.length}</span></div>${inner}<div id="fbz"></div><div class="next hide" id="nextz"><button class="btn" id="nextBtn">下一题 →</button></div></section>
+  ${l.diagram&&S.st<2?`<section class="card">${DIAGRAM}</section>`:''}`;
+  $('#nextBtn').onclick=nextStep;scrollTop();
+}
+function showNext(label){const n=$('#nextz');n.classList.remove('hide');if(S.st===LEVELS[S.lv].steps.length-1)$('#nextBtn').textContent='完成本关 🎉';if(label)$('#nextBtn').textContent=label;setTimeout(()=>{const r=n.getBoundingClientRect();if(r.bottom>window.innerHeight)n.scrollIntoView({behavior:'smooth',block:'end'})},60)}
+function fb(ok,head,why){$('#fbz').innerHTML=`<div class="fb ${ok?'ok':'bad'}"><b class="h">${head}</b>${why}</div>`}
+function nextStep(){S.st++;if(S.st>=LEVELS[S.lv].steps.length)renderLevelEnd();else renderStep()}
+function renderStep(){const st=LEVELS[S.lv].steps[S.st];({mcq:doMCQ,bucket:doBucket,order:doOrder,match:doMatch,slots:doSlots})[st.type](st)}
+
+/* MCQ */
+function doMCQ(st){
+  const order=shuffle(st.opts.map((t,i)=>i));
+  stepShell(`<div class="q">${st.q}</div>${st.pre||''}<div class="opts">${order.map((oi,k)=>`<button class="opt" data-o="${oi}"><span class="k">${'ABCD'[k]}</span><span>${st.opts[oi]}</span></button>`).join('')}</div>`);
+  app.querySelectorAll('.opt').forEach(b=>b.onclick=()=>{
+    const o=+b.dataset.o, ok=o===st.a;
+    app.querySelectorAll('.opt').forEach(x=>{x.disabled=true;if(+x.dataset.o===st.a)x.classList.add('ok')});
+    if(!ok){b.classList.add('bad');b.classList.add('shake');logMist(st.q,st.opts[o],st.opts[st.a],st.why)}
+    award(ok);fb(ok,ok?'✅ 答对了！':'❌ 差一点。正确答案已标绿。',st.why);if(ok)confetti(18);showNext();
+  });
+}
+/* BUCKET */
+function doBucket(st){
+  const items=shuffle(st.items);let k=0;const placed={};st.buckets.forEach(b=>placed[b.id]=[]);
+  stepShell(`<div class="q">${st.q}</div><div class="center counter" id="cnt"></div><div class="deck"><div class="bcard" id="bc"></div></div><div class="buckets">${st.buckets.map(b=>`<button class="bk" data-b="${b.id}"><span class="bl">${b.label}</span>${b.desc?`<span class="bd">${b.desc}</span>`:''}<span class="chips"></span></button>`).join('')}</div>`);
+  const show=()=>{$('#cnt').textContent=`第 ${k+1} / ${items.length} 张`;$('#bc').innerHTML=items[k].t;$('#bc').style.animation='none';void $('#bc').offsetWidth;$('#bc').style.animation='';app.querySelectorAll('.bk').forEach(x=>{x.disabled=false;x.classList.remove('ok','bad','shake')});$('#fbz').innerHTML='';$('#nextz').classList.add('hide')};
+  show();
+  app.querySelectorAll('.bk').forEach(b=>b.onclick=()=>{
+    if(b.disabled)return;const it=items[k],ok=b.dataset.b===it.b;
+    app.querySelectorAll('.bk').forEach(x=>{x.disabled=true;if(x.dataset.b===it.b)x.classList.add('ok')});
+    if(!ok){b.classList.add('bad','shake');const rb=st.buckets.find(x=>x.id===it.b);logMist(it.t,st.buckets.find(x=>x.id===b.dataset.b).label,rb.label,it.why)}
+    award(ok);
+    const right=app.querySelector(`.bk[data-b="${it.b}"] .chips`);const c=document.createElement('i');c.textContent=(ok?'✓ ':'✗ ')+strip(it.t);right.appendChild(c);
+    fb(ok,ok?'✅ 分对了！':'❌ 应该放进「'+st.buckets.find(x=>x.id===it.b).label+'」',it.why);
+    if(k<items.length-1){showNext('下一张 →');$('#nextBtn').onclick=()=>{k++;show();$('#nextBtn').onclick=nextStep}}
+    else{$('#nextBtn').onclick=nextStep;showNext();$('#cnt').textContent='全部分完啦！'}
+  });
+}
+/* ORDER */
+function doOrder(st){
+  let pos=0,missed=false;const pool=shuffle(st.items.map((t,i)=>i));
+  stepShell(`<div class="q">${st.q}</div><div class="timeline">${st.items.map((_,i)=>`<div class="slotrow" id="sr${i}"><span class="n">${i}</span><span class="muted">？</span></div>`).join('').replace(/<span class="n">(\d+)<\/span>/g,(m,d)=>`<span class="n">${st.base0?d:(+d+1)}</span>`)}</div><div class="pool">${pool.map(i=>`<button class="chip" data-i="${i}">${st.items[i].t}<small>${st.items[i].s||''}</small></button>`).join('')}</div>`);
+  app.querySelectorAll('.pool .chip').forEach(b=>b.onclick=()=>{
+    const i=+b.dataset.i;
+    if(i===pos){award(!missed);missed=false;b.classList.add('used');const r=$('#sr'+pos);r.classList.add('filled');r.innerHTML=`<span class="n">${r.querySelector('.n').textContent}</span><span><b>${st.items[i].t}</b> <span class="muted small">${st.items[i].s||''}</span></span>`;pos++;
+      if(pos===st.items.length){fb(true,'🎉 顺序完全正确！',st.why);confetti(30);showNext()}}
+    else{if(!missed)logMist(st.q,'第 '+(pos+1)+' 个选了「'+st.items[i].t+'」',st.items[pos].t,st.why);missed=true;b.classList.add('shake');setTimeout(()=>b.classList.remove('shake'),400);toast('还不是它～想想第 '+(pos+1)+' 个应该是什么？','bad')}
+  });
+}
+/* MATCH */
+function doMatch(st){
+  let sel=null,done=0;const missed=new Set();const L=shuffle(st.pairs.map((p,i)=>i)),R=shuffle(st.pairs.map((p,i)=>i));
+  stepShell(`<div class="q">${st.q}</div><div class="mgrid"><div class="mcol">${L.map(i=>`<button class="chip" data-l="${i}">${st.pairs[i].l}</button>`).join('')}</div><div class="mcol">${R.map(i=>`<button class="chip" data-r="${i}" style="font-weight:500">${st.pairs[i].r}</button>`).join('')}</div></div>`);
+  app.querySelectorAll('[data-l]').forEach(b=>b.onclick=()=>{app.querySelectorAll('[data-l]').forEach(x=>x.classList.remove('sel'));b.classList.add('sel');sel=+b.dataset.l});
+  app.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{
+    if(sel===null){toast('先点左边的一个术语哦 👈');return}
+    const r=+b.dataset.r;const lb=app.querySelector(`[data-l="${sel}"]`);
+    if(r===sel){award(!missed.has(sel));lb.classList.remove('sel');lb.classList.add('okc');b.classList.add('okc');b.innerHTML='✓ '+b.innerHTML;lb.innerHTML='✓ '+lb.innerHTML;done++;sel=null;
+      if(done===st.pairs.length){fb(true,'🎉 全部配对成功！',st.why);confetti(30);showNext()}}
+    else{if(!missed.has(sel)){missed.add(sel);logMist(st.pairs[sel].l,st.pairs[r].r,st.pairs[sel].r,'')}b.classList.add('badc','shake');setTimeout(()=>b.classList.remove('badc','shake'),500);toast('「'+st.pairs[sel].l+'」不是这个意思～ 这条定义说的是另一个术语。','bad')}
+  });
+}
+/* SLOTS */
+function doSlots(st){
+  const slots=st.lines.filter(l=>l.slot);let sel=null,done=0;const missed=new Set();
+  const chips=shuffle(slots.map(s=>s.slot));
+  stepShell(`<div class="q">${st.q}</div><div class="tree">${st.lines.map(l=>`<div class="ln">${l.pre}${l.slot?`<button class="slot" data-s="${l.slot}">❓ ${l.hint}</button>`:''}</div>`).join('')}</div><div class="pool">${chips.map(c=>`<button class="chip mono" data-c="${c}">📄 ${c}</button>`).join('')}</div>`);
+  app.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{app.querySelectorAll('[data-c]').forEach(x=>x.classList.remove('sel'));b.classList.add('sel');sel=b.dataset.c;app.querySelectorAll('.slot:not(.filled)').forEach(s=>s.classList.add('hot'))});
+  app.querySelectorAll('.slot').forEach(s=>s.onclick=()=>{
+    if(s.classList.contains('filled'))return;
+    if(!sel){toast('先点下面的一个文件卡片 👇');return}
+    const want=s.dataset.s, cb=app.querySelector(`[data-c="${sel}"]`);
+    if(want===sel){award(!missed.has(want));s.classList.add('filled');s.classList.remove('hot');s.textContent=sel;cb.classList.remove('sel');cb.classList.add('used');sel=null;done++;app.querySelectorAll('.slot').forEach(x=>x.classList.remove('hot'));
+      if(done===slots.length){fb(true,'🎉 任务文件夹拼好了！',st.why);confetti(30);showNext()}}
+    else{if(!missed.has(want)){missed.add(want);logMist('目录位置：'+s.textContent.replace('❓',''),sel,want,'')}s.classList.add('shake');setTimeout(()=>s.classList.remove('shake'),400);toast('📄 '+sel+' 不放这里～ 这个位置要的是：'+s.textContent.replace('❓ ',''),'bad')}
+  });
+}
+/* level end & final */
+function renderLevelEnd(){
+  const i=S.lv,r=S.res[i];r.done=true;const n=starsOf(r);updTop();confetti(70);
+  const last=S.res.every(x=>x.done);const nextI=S.res.findIndex(x=>!x.done);
+  app.innerHTML=`<section class="card center"><h2>${LEVELS[i].icon} 第 ${i+1} 关 通关！</h2>
+   <div class="stars" style="color:#f0a500">${starStr(n)}</div>
+   <p class="big">本关得分：<b>${r.got} / ${r.tot}</b></p>
+   <p class="muted">${n===3?'太棒了，概念掌握得很扎实！':n===2?'不错！看看错题回顾，再巩固一下。':'没关系，错误正是学习的入口。可以再挑战一次。'}</p>
+   <div class="take" style="text-align:left">💡 一句话带走：${TAKEAWAYS[i]}</div>
+   <div class="row" style="justify-content:center;margin-top:16px">
+    <button class="btn sec" id="again">🔁 再玩本关</button>
+    ${last?'<button class="btn sun" id="fin">🏆 查看总结卡</button>':`<button class="btn" id="nx">下一关：${LEVELS[nextI].icon} ${LEVELS[nextI].title} →</button>`}
+    <button class="btn sec" id="mp">🗺️ 关卡地图</button></div></section>`;
+  $('#again').onclick=()=>openLevel(i);$('#mp').onclick=renderMap;
+  if(last)$('#fin').onclick=renderFinal;else $('#nx').onclick=()=>openLevel(nextI);scrollTop();
+}
+function renderFinal(){
+  S.lv=null;updTop();
+  const got=S.res.reduce((a,r)=>a+r.got,0),tot=S.res.reduce((a,r)=>a+r.tot,0);const stars=S.res.reduce((a,r)=>a+starsOf(r),0);
+  const title=got/tot>=.9?'评测设计师 🏅':got/tot>=.7?'评测好帮手 🎖️':'评测见习生 🌱';
+  app.innerHTML=`<section class="card center" id="final"><span class="tag">总结卡</span><h1>🏆 全部通关！</h1>
+   <p class="big">称号：<b>${title}</b></p>
+   <div class="stars" style="color:#f0a500">⭐ ${stars} / ${LEVELS.length*3}</div>
+   <p class="big">总得分 <b>${got} / ${tot}</b>（正确率 ${Math.round(got/tot*100)}%）</p>
+   <div class="sumgrid" style="text-align:left">${LEVELS.map((l,i)=>`<div class="sumitem"><b>${l.icon} ${i+1}. ${l.title}</b><br><span style="color:#f0a500">${starStr(starsOf(S.res[i]))}</span> ${S.res[i].got}/${S.res[i].tot}</div>`).join('')}</div></section>
+  <section class="card"><h2>💡 说得清：七句话带走</h2>${TAKEAWAYS.map((t,i)=>`<div class="take"><b>${i+1}.</b> ${t}</div>`).join('')}</section>
+  <section class="card"><h2>🔎 认得出错：错题回顾（${S.mist.length}）</h2>${S.mist.length?S.mist.map(m=>`<div class="mist"><b>第 ${m.lv+1} 关</b> · ${m.q}<br>你的选择：<s>${m.yours}</s> → 正确：<b>${m.right}</b>${m.why?`<br><span class="muted">${m.why}</span>`:''}</div>`).join(''):'<p>一题都没错，太厉害了！🎉</p>'}</section>
+  <section class="card center"><p class="src">内容依据：Stanford CS 329Z《Evaluating Agents: Terminal-Bench and Harbor》（Alex Shaw、Ryan Marten，2026-10-26），术语定义与路线图引自讲义所引 Anthropic 文章。第 5 关情景题为依据讲义原则的改编练习。</p>
+   <div class="row" style="justify-content:center"><button class="btn" id="re">🔄 再玩一次</button><button class="btn sec" id="mp">🗺️ 关卡地图</button></div></section>`;
+  confetti(100);$('#re').onclick=restart;$('#mp').onclick=renderMap;scrollTop();
+}
+function restart(){S=freshState();renderStart()}
+$('#btnMap').onclick=renderMap;
+$('#btnRestart').onclick=()=>{if(S.res.some(r=>r.tot>0)&&!confirm('确定要清空进度，从头开始吗？'))return;restart()};
+window.__GAME={LEVELS,get S(){return S}};
+renderStart();
+</script>
+</body>
+</html>
